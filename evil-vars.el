@@ -1843,9 +1843,38 @@ Elements have the form (NAME . FUNCTION).")
                     (with-no-warnings (hide-sublevels 1)))
      :toggle     outline-toggle-children
      :open       ,(lambda ()
-                    (with-no-warnings
-                      (show-entry)
-                      (show-children)))
+                    (save-excursion
+                      (let ((func-invisible-p
+                             (cond
+                              ((and (derived-mode-p 'org-mode)
+                                    (fboundp 'org-invisible-p))
+                               #'org-invisible-p)
+                              ((and (derived-mode-p 'outline-mode)
+                                    (fboundp 'outline-invisible-p))
+                               #'outline-invisible-p)
+                              (t
+                               #'invisible-p)))
+                            (func-back-to-heading
+                             (cond
+                              ((and (derived-mode-p 'org-mode)
+                                    (fboundp 'org-back-to-heading))
+                               #'org-back-to-heading)
+                              ((and (derived-mode-p 'outline-mode)
+                                    (fboundp 'outline-back-to-heading))
+                               #'outline-invisible-p)
+                              (t
+                               #'beginning-of-visual-line))))
+                        ;; Repeatedly reveal children and body until the entry
+                        ;; is no longer folded
+                        (while (save-excursion
+                                 (funcall func-back-to-heading)
+                                 (end-of-line)
+                                 (funcall func-invisible-p (point)))
+                          (save-excursion
+                            (funcall func-back-to-heading)
+                            (with-no-warnings
+                              (show-children)
+                              (show-entry)))))))
      :open-rec   show-subtree
      :close      hide-subtree)
     ((origami-mode)
